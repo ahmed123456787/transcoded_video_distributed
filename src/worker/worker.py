@@ -4,7 +4,6 @@ import subprocess
 import shlex
 
 
-
 def get_video_size(path: str) -> int:
     """Return the size of the file"""
     try:
