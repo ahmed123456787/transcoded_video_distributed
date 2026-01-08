@@ -1,16 +1,16 @@
 from minio import Minio
-from src.config.base_config import BaseConfig
+from src.config.base_config import settings
 
 class MinioClient:
 
     def __init__(self):
         self.client = Minio(
-            BaseConfig.MINIO_ENDPOINT,
-            access_key=BaseConfig.MINIO_ACCESS_KEY,
-            secret_key=BaseConfig.MINIO_SECRET_KEY,
+            settings.MINIO_ENDPOINT,
+            access_key=settings.MINIO_ACCESS_KEY,
+            secret_key=settings.MINIO_SECRET_KEY,
+            secure=False
         )
-        self.bucket_name = BaseConfig.MINIO_BUCKET
-    
+        self.bucket_name = settings.MINIO_BUCKET
 
     def list_buckets(self):
         return self.client.list_buckets()

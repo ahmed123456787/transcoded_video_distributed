@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
-class BaseConfig(BaseSettings):
+class settings(BaseSettings):
 
     MINIO_ENDPOINT: str = Field(..., env="MINIO_ENDPOINT")
     MINIO_ACCESS_KEY: str = Field(..., env="MINIO_ACCESS_KEY")
@@ -13,4 +13,6 @@ class BaseConfig(BaseSettings):
     class Config:
         env_file = "../.env"
         env_file_encoding = "utf-8"
-    
+
+
+settings = settings()

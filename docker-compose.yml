@@ -4,13 +4,13 @@ services:
     container_name: zookeeper
     platform: linux/amd64
     ports:
-      - "2181:2181"
+      - "2182:2181"
     networks:
       - app-net
 
   kafka:
     image: wurstmeister/kafka:latest
-    container_name: kafka
+    container_name: kafka_video
     ports:
       - "9092:9092"
     environment:
@@ -42,6 +42,36 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9000:9000" # Minio API port
-      - "9001:9001" # MinIo Console port
+      - "9000:9000"
+      - "9001:9001"
     command: server /data --console-address ":9001"
+    networks:
+      - app-net
+
+  webapp:
+    build: .
+    container_name: video_transcoding_app
+    ports:
+      - "8000:8000"
+    env_file:
+      - src/.env
+    environment:
+      - DATABASE_URL=sqlite:////app/data/app.db
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - kafka
+      - minio
+    networks:
+      - app-net
+    volumes:
+      - ./src:/app/src
+      - db_data:/app/data
+
+volumes:
+  kafka_data:
+  minio_data:
+  db_data:
+
+networks:
+  app-net:
+    driver: bridge
