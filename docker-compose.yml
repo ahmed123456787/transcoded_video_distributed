@@ -56,7 +56,7 @@ services:
     env_file:
       - src/.env
     environment:
-      - DATABASE_URL=sqlite:////app/data/app.db
+      - DATABASE_URL=sqlite:////app/src/app.db
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - kafka
@@ -65,12 +65,10 @@ services:
       - app-net
     volumes:
       - ./src:/app/src
-      - db_data:/app/data
 
 volumes:
   kafka_data:
   minio_data:
-  db_data:
 
 networks:
   app-net:

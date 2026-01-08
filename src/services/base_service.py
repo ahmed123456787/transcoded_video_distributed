@@ -38,3 +38,13 @@ class BaseService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.commit()
         db.refresh(db_obj)
         return db_obj
+    
+    def get_all(
+        self, db: Session
+    ) -> ModelType | None:
+        return db.query(self.model)
+    
+    def get(
+        self, db: Session, id
+    ) -> ModelType | None:
+        return db.query(self.model).filter(self.model.id == id).first()
