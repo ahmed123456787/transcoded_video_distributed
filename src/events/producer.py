@@ -1,6 +1,7 @@
 from aiokafka import AIOKafkaProducer
 from typing import Any
 
+
 class KafkaProducerWrapper:
     def __init__(
         self,

@@ -25,3 +25,7 @@ class VideoUploadedResponse(BaseModel):
     video_id: UUID
     upload_url: str
     message: str
+
+
+class VideoUploadRequest(BaseModel):
+    filename: str
