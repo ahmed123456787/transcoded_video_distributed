@@ -77,9 +77,11 @@
 
 
 from fastapi import FastAPI
-from src.controllers.upload_controller import router as upload_controller
-from src.database import engine, Base
+from fastapi.middleware.cors import CORSMiddleware
+from src.api_transcoder.controllers.upload_controller import router as upload_controller
+from src.api_transcoder.database import engine, Base
 from contextlib import asynccontextmanager
+from src.api_transcoder.events.producer import KafkaProducerWrapper
 
 
 
@@ -87,11 +89,21 @@ from contextlib import asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup code
     Base.metadata.create_all(bind=engine)
+    kafka_producer = KafkaProducerWrapper()
     yield
     # Shutdown code (if any)
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # adjust to your frontend URL in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(upload_controller, prefix="/api")
 
 

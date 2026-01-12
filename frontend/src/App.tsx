@@ -1,4 +1,4 @@
-import React, { useState, useRef, ChangeEvent } from "react";
+import React, { useState, useRef, type ChangeEvent } from "react";
 import {
   UploadCloud,
   FileVideo,
@@ -10,6 +10,8 @@ import {
 import axios from "axios";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+
+const API_BASE = "http://localhost:8000/api"; // adjust to your backend
 
 // --- Utility for Tailwind classes ---
 function cn(...inputs: ClassValue[]) {
@@ -62,42 +64,37 @@ export default function VideoUploader() {
     }
   };
 
-  // 3. The Main Upload Logic (The "Netflix" Pattern)
+  // 3. The Main Upload Logic
   const handleUpload = async () => {
     if (!file) return;
 
     try {
       setStatus("getting_url");
 
-      // STEP A: Ask API for Presigned URL
-      // In a real app, replace with: const { data } = await axios.post('/api/upload-url', { filename: file.name });
-      // We are mocking a 1-second delay here:
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const mockPresignedUrl = "https://httpbin.org/put"; // Free endpoint for testing PUT requests
+      // Step 1: Get presigned URL from backend
+      const { data } = await axios.post(`${API_BASE}/video-signedUrl`, {
+        filename: file.name,
+      });
+      const { video_id, upload_url } = data;
 
       setStatus("uploading");
 
-      // STEP B: Upload directly to S3 (Mocked here)
-      await axios.put(mockPresignedUrl, file, {
-        headers: {
-          "Content-Type": file.type, // Important for S3
-        },
+      // Step 2: Upload file to MinIO using presigned URL
+      await axios.put(upload_url, file, {
+        headers: { "Content-Type": file.type },
         onUploadProgress: (progressEvent) => {
           const total = progressEvent.total || file.size;
-          const current = progressEvent.loaded;
-          const percentage = Math.round((current / total) * 100);
+          const percentage = Math.round((progressEvent.loaded / total) * 100);
           setProgress(percentage);
         },
       });
 
-      // STEP C: Notify Backend "I'm done" -> Start Processing
       setStatus("processing");
-      // In real app: await axios.post('/api/upload-complete', { videoId: ... });
 
-      // Mocking processing time (waiting for RabbitMQ/Worker)
-      setTimeout(() => {
-        setStatus("success");
-      }, 2000);
+      // Step 3: Start transcoding job
+      await axios.post(`${API_BASE}/job-launch?video_id=${video_id}`);
+
+      setStatus("success");
     } catch (error) {
       console.error(error);
       setStatus("error");
@@ -152,7 +149,7 @@ export default function VideoUploader() {
           {file && (
             <div className="mb-6">
               <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
                   <FileVideo size={24} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -181,8 +178,8 @@ export default function VideoUploader() {
               <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
                 <span>
                   {status === "uploading"
-                    ? "Uploading to S3..."
-                    : "Transcoding..."}
+                    ? "Uploading to MinIO..."
+                    : "Starting Job..."}
                 </span>
                 <span>
                   {status === "uploading" ? `${progress}%` : "Please Wait"}
@@ -214,15 +211,13 @@ export default function VideoUploader() {
 
           {/* 5. SUCCESS STATE */}
           {status === "success" && (
-            <div className="mb-6 p-6 bg-green-50 rounded-xl border border-green-100 text-center animate-in fade-in zoom-in duration-300">
+            <div className="mb-6 p-6 bg-green-50 rounded-xl border border-green-100 text-center">
               <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
                 <CheckCircle2 size={32} />
               </div>
-              <h3 className="text-lg font-bold text-green-800">
-                Ready to Stream!
-              </h3>
+              <h3 className="text-lg font-bold text-green-800">Job Started!</h3>
               <p className="text-green-600 text-sm mt-1">
-                Your video has been transcoded.
+                Your video is being transcoded.
               </p>
             </div>
           )}
@@ -243,8 +238,7 @@ export default function VideoUploader() {
                 disabled
                 className="w-full py-3 px-4 bg-gray-100 text-gray-400 font-bold rounded-lg cursor-not-allowed flex items-center justify-center gap-2"
               >
-                <Loader2 className="animate-spin" size={18} /> Preparing
-                Storage...
+                <Loader2 className="animate-spin" size={18} /> Getting URL...
               </button>
             )}
 

@@ -33,18 +33,18 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: minioo
-    environment:
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
-      - MINIO_BUCKET=videos
-    volumes:
-      - minio_data:/data
+    container_name: minio
+    command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
       - "9001:9001"
-    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_SERVER_URL: http://localhost:9000
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    volumes:
+      - minio_data:/data
     networks:
       - app-net
 
@@ -57,7 +57,7 @@ services:
       - src/.env
     environment:
       - DATABASE_URL=sqlite:////app/src/app.db
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn src.api_transcoder.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - kafka
       - minio

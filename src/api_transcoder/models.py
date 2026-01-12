@@ -65,4 +65,19 @@ class TranscodingJob(Base):
     status = Column(Enum(JobStatus), nullable=False, default=JobStatus.PENDING)
     error_message = Column(Text, nullable=True)
 
+    chunks = relationship("JobChunk", back_populates="job", cascade="all, delete-orphan")
     video = relationship("Video", back_populates="transcoding_jobs")
+
+
+
+
+class JobChunk(Base):
+    __tablename__ = "job_chunks"
+
+    id = Column(UUID, primary_key=True, index=True)
+    job_id = Column(UUID, ForeignKey("transcoding_jobs.id"), nullable=False, index=True)
+    chunk_s3_key = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+    job = relationship("TranscodingJob", back_populates="chunks") 

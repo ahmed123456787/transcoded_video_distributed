@@ -1,13 +1,13 @@
-from src.storage.minio_client import MinioClient
+from src.api_transcoder.storage.minio_client import MinioClient
 import uuid
 from datetime import timedelta
 from minio.error import S3Error
-from src.services.video_service import video_service
+from src.api_transcoder.services.video_service import video_service
 from pathlib import Path
 from uuid import uuid4
-from src.models import VideoStatus
-from src.schema import VideoCreateSchema
-from src.exceptions.exceptions import UnsupportedFileTypeError
+from src.api_transcoder.models import VideoStatus
+from src.api_transcoder.schema import VideoCreateSchema
+from src.api_transcoder.exceptions.exceptions import UnsupportedFileTypeError
 
 
 def upload_video_to_minio(file_path: str, object_name: str) :
@@ -25,6 +25,7 @@ def get_presigned_url(object_name: str, expiry: int = 3600) -> str:
     """Generate a presigned URL for uploading an object to MinIO."""
     minio_client = MinioClient()
     return minio_client.client.presigned_put_object(
+        
         minio_client.bucket_name,
         object_name,
         expires=timedelta(seconds=expiry)

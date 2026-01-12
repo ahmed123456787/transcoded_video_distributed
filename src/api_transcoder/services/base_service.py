@@ -1,7 +1,7 @@
 from typing import Generic, Type, TypeVar
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from src.database import Base
+from src.api_transcoder.database import Base
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)

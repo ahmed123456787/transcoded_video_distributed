@@ -1,5 +1,5 @@
 from minio import Minio
-from src.config.base_config import settings
+from src.api_transcoder.config.base_config import settings
 
 class MinioClient:
 
