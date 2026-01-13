@@ -11,14 +11,12 @@ import axios from "axios";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-const API_BASE = "http://localhost:8000/api"; // adjust to your backend
+const API_BASE = "http://localhost:8000/api";
 
-// --- Utility for Tailwind classes ---
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// --- Types ---
 type UploadStatus =
   | "idle"
   | "getting_url"
@@ -34,11 +32,9 @@ export default function VideoUploader() {
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Handle File Selection
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
-      // Validation: Check if it's a video
       if (!selectedFile.type.startsWith("video/")) {
         setErrorMessage("Please upload a valid video file (MP4, MOV, etc).");
         return;
@@ -49,7 +45,6 @@ export default function VideoUploader() {
     }
   };
 
-  // 2. Handle Drag & Drop
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
@@ -64,18 +59,19 @@ export default function VideoUploader() {
     }
   };
 
-  // 3. The Main Upload Logic
   const handleUpload = async () => {
     if (!file) return;
 
     try {
       setStatus("getting_url");
 
-      // Step 1: Get presigned URL from backend
       const { data } = await axios.post(`${API_BASE}/video-signedUrl`, {
         filename: file.name,
       });
       const { video_id, upload_url } = data;
+
+      // URL is now correct from backend, no need to replace
+      console.log("Upload URL:", upload_url);
 
       setStatus("uploading");
 
@@ -96,7 +92,7 @@ export default function VideoUploader() {
 
       setStatus("success");
     } catch (error) {
-      console.error(error);
+      console.error("Upload error:", error);
       setStatus("error");
       setErrorMessage("Upload failed. Please try again.");
     }
@@ -113,7 +109,6 @@ export default function VideoUploader() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-        {/* Header */}
         <div className="bg-slate-900 p-6 text-white">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <UploadCloud className="text-blue-400" />
@@ -125,7 +120,6 @@ export default function VideoUploader() {
         </div>
 
         <div className="p-8">
-          {/* 1. DROP ZONE */}
           {!file && status === "idle" && (
             <div
               onDragOver={(e) => e.preventDefault()}
@@ -145,7 +139,6 @@ export default function VideoUploader() {
             </div>
           )}
 
-          {/* 2. FILE PREVIEW CARD */}
           {file && (
             <div className="mb-6">
               <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -172,7 +165,6 @@ export default function VideoUploader() {
             </div>
           )}
 
-          {/* 3. PROGRESS BAR */}
           {(status === "uploading" || status === "processing") && (
             <div className="mb-6">
               <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
@@ -201,7 +193,6 @@ export default function VideoUploader() {
             </div>
           )}
 
-          {/* 4. ERROR MESSAGE */}
           {errorMessage && (
             <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-lg flex items-center gap-3 text-sm">
               <AlertCircle size={18} />
@@ -209,7 +200,6 @@ export default function VideoUploader() {
             </div>
           )}
 
-          {/* 5. SUCCESS STATE */}
           {status === "success" && (
             <div className="mb-6 p-6 bg-green-50 rounded-xl border border-green-100 text-center">
               <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -222,7 +212,6 @@ export default function VideoUploader() {
             </div>
           )}
 
-          {/* 6. ACTION BUTTONS */}
           <div className="mt-2">
             {status === "idle" && file && (
               <button
@@ -253,7 +242,6 @@ export default function VideoUploader() {
           </div>
         </div>
 
-        {/* Hidden Input */}
         <input
           type="file"
           ref={fileInputRef}

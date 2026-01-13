@@ -3,15 +3,13 @@ from typing import List, Optional
 import subprocess
 import os
 from uuid import UUID, uuid4
-
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
 
 from src.api_transcoder.storage.minio_client import MinioClient
 from src.api_transcoder.services.base_service import BaseService
 from src.api_transcoder.models import JobChunk
 from src.api_transcoder.schema import JobChunkCreateSchema, JobChunkUpdateSchema
-
 
 
 
