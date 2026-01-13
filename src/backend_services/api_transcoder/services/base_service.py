@@ -1,7 +1,7 @@
 from typing import Generic, Type, TypeVar
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from src.api_transcoder.database import Base
+from api_transcoder.database import Base
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -12,7 +12,7 @@ class BaseService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: Type[ModelType]):
         """
         Generic service with default methods to Create and Update.
-
+ 
         **Parameters**
 
         * `model`: A SQLAlchemy model class

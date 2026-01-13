@@ -6,10 +6,10 @@ from uuid import UUID, uuid4
 from sqlalchemy.orm import Session
 
 
-from src.api_transcoder.storage.minio_client import MinioClient
-from src.api_transcoder.services.base_service import BaseService
-from src.api_transcoder.models import JobChunk
-from src.api_transcoder.schema import JobChunkCreateSchema, JobChunkUpdateSchema
+from api_transcoder.storage.minio_client import MinioClient
+from api_transcoder.services.base_service import BaseService
+from api_transcoder.models import JobChunk
+from api_transcoder.schema import JobChunkCreateSchema, JobChunkUpdateSchema
 
 
 

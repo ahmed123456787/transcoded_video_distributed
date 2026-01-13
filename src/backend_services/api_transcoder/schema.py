@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 from typing import Optional
 from uuid import UUID
-from src.api_transcoder.models import Resolution
-from src.api_transcoder.models import JobStatus
+from api_transcoder.models import Resolution
+from api_transcoder.models import JobStatus
 
 
 class VideoCreateSchema(BaseModel):

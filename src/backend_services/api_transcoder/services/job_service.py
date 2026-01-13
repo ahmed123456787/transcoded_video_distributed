@@ -1,6 +1,6 @@
-from src.api_transcoder.services.base_service import BaseService
-from src.api_transcoder.models import TranscodingJob as Job
-from src.api_transcoder.schema import JobCreateSchema, JobUpdateSchema
+from api_transcoder.services.base_service import BaseService
+from api_transcoder.models import TranscodingJob as Job
+from api_transcoder.schema import JobCreateSchema, JobUpdateSchema
 
 
 class JobService(BaseService[Job, JobCreateSchema, JobUpdateSchema]):

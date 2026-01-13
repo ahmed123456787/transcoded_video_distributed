@@ -3,7 +3,7 @@ from datetime import datetime
 from urllib.parse import urlencode, quote
 import hashlib
 import hmac
-from src.api_transcoder.config.base_config import settings
+from api_transcoder.config.base_config import settings
 
 
 class MinioClient:
