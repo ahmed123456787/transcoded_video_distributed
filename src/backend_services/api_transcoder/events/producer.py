@@ -2,6 +2,7 @@ from aiokafka import AIOKafkaProducer
 from typing import Any, List, Optional
 from uuid import UUID
 import json
+from common.message_types import ChunkTranscodingMessage
 
 
 class KafkaProducerWrapper:
@@ -83,15 +84,17 @@ class KafkaProducerWrapper:
             # Distribute chunks across partitions
             partition = index % partition_count
 
-            message = {
-                "job_id": str(job_id),
-                "chunk_s3_key": chunk_key,
-                "chunk_index": index,
-                "total_chunks": len(chunk_keys),
-            }
+            message = ChunkTranscodingMessage(
+                video_id=str(job_id),
+                chunk_index=index,
+                target_format="mp4",  # Example format
+                resolution="1080p",   # Example resolution
+                bitrate=5000          # Example bitrate in kbps
+            ).__dict__
+
 
             await self.send(
                 value=json.dumps(message).encode(),
-                key=None,  # No key to avoid grouping
+                key=None,  
                 partition=partition,  # Explicit partition assignment
             )

@@ -15,12 +15,12 @@ def generate_object_name(extension: str, prefix: str = StoragePaths.RAW) -> str:
 
 
 def generate_raw_object_name(extension: str) -> str:
-    return f"{StoragePaths.RAW}/{uuid.uuid4()}.{extension}"
+    return f"{StoragePaths.RAW.value}/{uuid.uuid4()}.{extension}"
 
 
 def generate_chunk_object_name(video_id: str, chunk_index: int, extension: str = "mp4") -> str:
-    return f"{StoragePaths.CHUNKS}/{video_id}/chunk_{chunk_index:03d}.{extension}"
+    return f"{StoragePaths.CHUNKS.value}/{video_id}/chunk_{chunk_index:03d}.{extension}"
 
 
 def generate_transcoded_object_name(video_id: str, quality: str, extension: str = "mp4") -> str:
-    return f"{StoragePaths.TRANSCODED}/{video_id}/{quality}.{extension}"
+    return f"{StoragePaths.TRANSCODED.value}/{video_id}/{quality}.{extension}"

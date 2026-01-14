@@ -35,6 +35,15 @@ class VideoUploadRequest(BaseModel):
 
 ############################################################
 
+class JobSchema (BaseModel):
+    id: UUID
+    video_id: UUID
+    resolution: Resolution
+    s3_output_key: str
+    status: JobStatus 
+    error_message: Optional[str] = None
+
+
 class JobCreateSchema(BaseModel):
     id: UUID
     video_id: UUID

@@ -105,7 +105,21 @@ class MinioClient:
         url = f"http://{host}{canonical_uri}?{canonical_querystring}&X-Amz-Signature={signature}"
         
         return url
-    
+
+
+    def generate_internal_presigned_get_url(self, object_name: str, expires: int = 3600) -> str:
+        """
+        Generate a presigned GET URL using the internal Docker network endpoint.
+        Use this for server-to-server communication (e.g., ffmpeg).
+        """
+        # Use the internal endpoint (e.g., minio:9000) instead of external (localhost:9000)
+        from datetime import timedelta
+        return self.client.presigned_get_object(
+            bucket_name=self.bucket_name,
+            object_name=object_name,
+            expires=timedelta(seconds=expires),
+        )
+
 
     def generate_presigned_put_url(self, object_name: str, expires: int = 3600) -> str:
         return self._generate_presigned_url("PUT", object_name, expires)

@@ -9,3 +9,6 @@ class JobService(BaseService[Job, JobCreateSchema, JobUpdateSchema]):
 
     def create(self, db, *, obj_in):
         return super().create(db, obj_in=obj_in)
+
+
+job_service = JobService()

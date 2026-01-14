@@ -1,16 +1,12 @@
 from fastapi import APIRouter, Depends, status
 from uuid import  UUID
-from api_transcoder.schema import VideoUploadedResponse, VideoUpdate, VideoUploadRequest,JobCreateSchema
-from api_transcoder.models import VideoStatus,Resolution,JobStatus
+from api_transcoder.schema import VideoUploadedResponse, VideoUploadRequest, JobSchema
 from api_transcoder.services.minio_service import minio_service
 from api_transcoder.services.video_service import video_service
 from api_transcoder.database import get_db
 from api_transcoder.services.upload_service import UploadService
-from api_transcoder.services.job_service import JobService
-from api_transcoder.services.chunking_service import ChunkingService
-from pathlib import Path
-from uuid import uuid4
-
+from api_transcoder.services.transcoding_service import TranscodingOrchestrator
+from api_transcoder.services.job_service import job_service
 
 router = APIRouter()
 
@@ -41,33 +37,15 @@ async def list_videos(db=Depends(get_db)):
 
 
 
-@router.post("/job-launch")
+@router.post("/job-launch") 
 async def launch_transcode(video_id: UUID, db=Depends(get_db)):
-    # check_file_is_uploaded(video_id)
+    orchestrator = TranscodingOrchestrator()
+    job_id, chunk_count = await orchestrator.start_transcoding(db, video_id)
+    return {"message": "Transcoding started", "video_id": str(video_id), "job_id": str(job_id), "chunks": chunk_count}
 
-    video = video_service.get(db, id=video_id)
-    video_obj = VideoUpdate(status=VideoStatus.PROCESSING.value)
-    video_service.update(db, db_obj=video, obj_in=video_obj)
 
-    ext = Path(video.original_filename).suffix or ".mp4"
-    # stable key independent of original name
-    output_key = f"transcoded/{video_id}/1080p{ext}"
 
-    job_service = JobService()
-    job_obj = JobCreateSchema(
-        id=uuid4(),
-        video_id=video_id,
-        resolution=Resolution.R1080P,
-        s3_output_key=output_key,
-        status=JobStatus.PENDING,
-    )
-    job_service.create(db, obj_in=job_obj)
-    chunking_service = ChunkingService()
-    chunking_service.create_and_store_chunks(
-        db,
-        job_id=job_obj.id,
-        local_input_path=f"/tmp/uploads/{video_id}{ext}",
-        target_seconds=60,
-        object_prefix=f"chunks/{job_obj.id}",
-    )
-    return {"message": "Transcoding started", "video_id": str(video_id)}
+@router.get("/jobs", response_model=list[JobSchema])
+async def list_jobs(db=Depends(get_db)):
+    jobs = job_service.get_all(db).all()
+    return jobs

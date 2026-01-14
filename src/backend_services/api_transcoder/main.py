@@ -3,17 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from api_transcoder.controllers.upload_controller import router as upload_controller
 from api_transcoder.database import engine, Base
 from contextlib import asynccontextmanager
-from api_transcoder.events.producer import KafkaProducerWrapper
-
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup code
     Base.metadata.create_all(bind=engine)
-    kafka_producer = KafkaProducerWrapper()
     yield
-    # Shutdown code (if any)
+    # Shutdown code 
 
 
 app = FastAPI(lifespan=lifespan)
