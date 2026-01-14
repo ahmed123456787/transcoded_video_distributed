@@ -10,6 +10,7 @@ from api_transcoder.storage.minio_client import MinioClient
 from api_transcoder.services.base_service import BaseService
 from api_transcoder.models import JobChunk
 from api_transcoder.schema import JobChunkCreateSchema, JobChunkUpdateSchema
+from api_transcoder.events.producer import KafkaProducerWrapper
 
 
 
@@ -18,6 +19,7 @@ class ChunkingService(BaseService[JobChunk, JobChunkCreateSchema, JobChunkUpdate
     def __init__(self):
         super().__init__(JobChunk)
         self.minio_client = MinioClient()
+
 
     def split_by_seconds(self, input_path: str, target_seconds: int, work_dir: str) -> List[str]:
         Path(work_dir).mkdir(parents=True, exist_ok=True)
@@ -36,17 +38,18 @@ class ChunkingService(BaseService[JobChunk, JobChunkCreateSchema, JobChunkUpdate
 
     def split_from_minio(self, object_key: str, target_seconds: int, work_dir: str) -> List[str]:
         """
-        Stream video directly from MinIO using presigned URL and split into chunks.
+        Download video from MinIO to local temp, split into chunks.
         """
         Path(work_dir).mkdir(parents=True, exist_ok=True)
         output_pattern = str(Path(work_dir) / "chunk_%03d.ts")
         
-        # Use internal presigned URL (minio:9000 instead of localhost:9000)
-        presigned_url = self.minio_client.generate_internal_presigned_get_url(object_key, expires=3600)
+        # Download file from MinIO to local temp
+        local_input = str(Path(work_dir) / "input_video.mp4")
+        self.minio_client.download_file(object_key, local_input)
         
         cmd = [
             "ffmpeg", "-y",
-            "-i", presigned_url,
+            "-i", local_input,
             "-c", "copy",
             "-f", "segment",
             "-segment_time", str(target_seconds),
@@ -54,7 +57,14 @@ class ChunkingService(BaseService[JobChunk, JobChunkCreateSchema, JobChunkUpdate
             output_pattern,
         ]
         subprocess.run(cmd, check=True)
+        
+        try:
+            os.remove(local_input)
+        except OSError:
+            pass
+        
         return sorted(str(p) for p in Path(work_dir).glob("chunk_*.ts"))
+
 
     
 
@@ -97,7 +107,7 @@ class ChunkingService(BaseService[JobChunk, JobChunkCreateSchema, JobChunkUpdate
         db: Session,
         *,
         job_id: UUID,
-        source_object_key: str,  # Changed from local_input_path
+        source_object_key: str, 
         target_seconds: int,
         object_prefix: str,
         work_dir: Optional[str] = None,
@@ -110,5 +120,8 @@ class ChunkingService(BaseService[JobChunk, JobChunkCreateSchema, JobChunkUpdate
         # Stream directly from MinIO and split
         local_chunks = self.split_from_minio(source_object_key, target_seconds, tmp_dir)
         object_keys = self.upload_chunks_to_minio(local_chunks, object_prefix)
-        
+        []
         return self.persist_chunks(db, job_id=job_id, object_keys=object_keys)
+    
+
+chunking_service = ChunkingService()

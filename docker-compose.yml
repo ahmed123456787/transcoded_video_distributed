@@ -41,7 +41,7 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-      MINIO_SERVER_URL: http://localhost:9000  # This is critical!
+      MINIO_SERVER_URL: http://localhost:9000
       MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
     volumes:
       - minio_data:/data
@@ -49,22 +49,25 @@ services:
       - app-net
 
   webapp:
-    build: .
+    build:
+      context: .
+      dockerfile: src/backend_services/Dockerfile
     container_name: video_transcoding_app
     ports:
       - "8000:8000"
     env_file:
-      - src/.env
+      - src/backend_services/.env
     environment:
       - DATABASE_URL=sqlite:////app/src/app.db
-    command: uvicorn src.api_transcoder.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn api_transcoder.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - kafka
       - minio
     networks:
       - app-net
     volumes:
-      - ./src:/app/src
+      - ./src/backend_services:/app/src
+    working_dir: /app/src
 
 volumes:
   kafka_data:

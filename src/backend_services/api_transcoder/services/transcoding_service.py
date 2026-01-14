@@ -9,6 +9,9 @@ from api_transcoder.services.job_service import JobService
 from api_transcoder.services.chunking_service import ChunkingService
 from api_transcoder.events.producer import KafkaProducerWrapper
 from api_transcoder.config.base_config import settings
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 
 class TranscodingOrchestrator:
@@ -42,14 +45,15 @@ class TranscodingOrchestrator:
             target_seconds=60,
             object_prefix=f"chunks/{job.id}",
         )
-
+        # Notify workers via Kafka
+        await self._notify_workers(job_id=job.id, chunks=chunks)
         return job.id, len(chunks)
 
 
-        async def _notify_workers(self, job_id: UUID, chunks):
-            chunk_keys = [c.chunk_s3_key for c in chunks]
-            async with KafkaProducerWrapper(
-                bootstrap_servers=settings.KAFKA_BROKER,
-                topic="video-chunks"
-            ) as producer:
-                await producer.notify_workers(job_id=job_id, chunk_keys=chunk_keys)
+    async def _notify_workers(self, job_id: UUID, chunks):
+        logger.info("Testing hello",job_id)
+        chunk_keys = [c.chunk_s3_key for c in chunks]
+        async with KafkaProducerWrapper(
+            topic="video-chunks"
+        ) as producer:
+            await producer.notify_workers(job_id=job_id, chunk_keys=chunk_keys)

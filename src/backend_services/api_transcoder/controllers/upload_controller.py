@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from uuid import  UUID
 from api_transcoder.schema import VideoUploadedResponse, VideoUploadRequest, JobSchema
-from api_transcoder.services.minio_service import minio_service
 from api_transcoder.services.video_service import video_service
 from api_transcoder.database import get_db
 from api_transcoder.services.upload_service import UploadService
@@ -29,12 +28,10 @@ async def upload_video(
     )
 
 
-
 @router.get("/videos")
 async def list_videos(db=Depends(get_db)):
     videos = video_service.get_all(db)
     return {"videos": videos.all()}
-
 
 
 @router.post("/job-launch") 
@@ -49,3 +46,16 @@ async def launch_transcode(video_id: UUID, db=Depends(get_db)):
 async def list_jobs(db=Depends(get_db)):
     jobs = job_service.get_all(db).all()
     return jobs
+
+
+@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_job(job_id: UUID, db=Depends(get_db)):
+    job_service.delete(db, id=job_id)
+    return {"message": f"Job {job_id} deleted"}
+
+
+@router.get("/chunk-jobs")
+async def list_chunk_jobs(db=Depends(get_db)):
+    from api_transcoder.services.chunking_service import chunking_service
+    chunk_jobs = chunking_service.get_all(db).all()
+    return {"chunk_jobs": chunk_jobs}

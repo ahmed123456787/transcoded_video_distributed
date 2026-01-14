@@ -8,7 +8,7 @@ from common.message_types import ChunkTranscodingMessage
 class KafkaProducerWrapper:
     def __init__(
         self,
-        bootstrap_servers: str = "localhost:9092",
+        bootstrap_servers: str = "kafka:9093",
         topic: str = None,
         key_serializer = None,
         value_serializer = None,
@@ -63,7 +63,6 @@ class KafkaProducerWrapper:
 
 
     async def get_partition_count(self) -> int:
-        """Get the number of partitions for the topic."""
         if not self._started:
             raise RuntimeError("Producer not started.")
         partitions = await self.producer.partitions_for(self.topic)
@@ -71,10 +70,6 @@ class KafkaProducerWrapper:
 
 
     async def notify_workers(self, job_id: UUID, chunk_keys: List[str]):
-        """
-        Distribute chunks across partitions for parallel processing.
-        Each chunk goes to a different partition (round-robin).
-        """
         if not self._started:
             await self.start()
 

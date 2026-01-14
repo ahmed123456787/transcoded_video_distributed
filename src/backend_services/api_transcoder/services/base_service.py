@@ -48,3 +48,13 @@ class BaseService(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self, db: Session, id
     ) -> ModelType | None:
         return db.query(self.model).filter(self.model.id == id).first()
+    
+
+    def delete(
+        self, db: Session, *, id
+    ) -> None:
+        obj = db.query(self.model).get(id)
+        if obj:
+            db.delete(obj)
+            db.commit(
+    )
