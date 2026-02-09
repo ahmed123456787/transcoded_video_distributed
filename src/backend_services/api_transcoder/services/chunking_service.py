@@ -10,7 +10,6 @@ from api_transcoder.storage.minio_client import MinioClient
 from api_transcoder.services.base_service import BaseService
 from api_transcoder.models import JobChunk
 from api_transcoder.schema import JobChunkCreateSchema, JobChunkUpdateSchema
-from api_transcoder.events.producer import KafkaProducerWrapper
 
 
 
@@ -120,7 +119,6 @@ class ChunkingService(BaseService[JobChunk, JobChunkCreateSchema, JobChunkUpdate
         # Stream directly from MinIO and split
         local_chunks = self.split_from_minio(source_object_key, target_seconds, tmp_dir)
         object_keys = self.upload_chunks_to_minio(local_chunks, object_prefix)
-        []
         return self.persist_chunks(db, job_id=job_id, object_keys=object_keys)
     
 

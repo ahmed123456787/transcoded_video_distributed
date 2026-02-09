@@ -4,8 +4,9 @@ from dataclasses import dataclass
 
 @dataclass
 class ChunkTranscodingMessage:
-    video_id: str
+    id: str
     chunk_index: int
     target_format: str
     resolution: str
     bitrate: int
+    chunk_s3_key: str

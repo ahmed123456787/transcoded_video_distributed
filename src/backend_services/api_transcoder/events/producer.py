@@ -69,19 +69,23 @@ class KafkaProducerWrapper:
         return len(partitions)
 
 
-    async def notify_workers(self, job_id: UUID, chunk_keys: List[str]):
+    async def notify_workers(self, job_id: UUID, chunk_data: List[dict], data: Optional[dict] = None):   
         if not self._started:
             await self.start()
 
         partition_count = await self.get_partition_count()
 
-        for index, chunk_key in enumerate(chunk_keys):
+        for index, chunk_key in enumerate(chunk_data):
+            chunk_id = chunk_key["id"]
+            chunk_s3_key = chunk_key["chunk_s3_key"]
+
             # Distribute chunks across partitions
             partition = index % partition_count
 
             message = ChunkTranscodingMessage(
-                video_id=str(job_id),
+                id=str(chunk_id),
                 chunk_index=index,
+                chunk_s3_key=chunk_s3_key,
                 target_format="mp4",  # Example format
                 resolution="1080p",   # Example resolution
                 bitrate=5000          # Example bitrate in kbps

@@ -1,17 +1,14 @@
 from uuid import UUID, uuid4
-from pathlib import Path
 from sqlalchemy.orm import Session
 
-from api_transcoder.models import VideoStatus, Resolution, JobStatus
-from api_transcoder.schema import VideoUpdate, JobCreateSchema
+from api_transcoder.models import Resolution, JobStatus
+from api_transcoder.schema import  JobCreateSchema
 from api_transcoder.services.video_service import video_service
 from api_transcoder.services.job_service import JobService
 from api_transcoder.services.chunking_service import ChunkingService
 from api_transcoder.events.producer import KafkaProducerWrapper
-from api_transcoder.config.base_config import settings
-from logging import getLogger
+from common.redis_client import redis_client
 
-logger = getLogger(__name__)
 
 
 class TranscodingOrchestrator:
@@ -20,14 +17,12 @@ class TranscodingOrchestrator:
         self.chunking_service = ChunkingService()
 
 
-
     async def start_transcoding(self, db: Session, video_id: UUID):
-        # Get video record
+
         video = video_service.get(db, id=video_id)
         if not video:
             raise ValueError(f"Video {video_id} not found")
 
-        # Create job
         job_payload = JobCreateSchema(
             id=uuid4(),
             video_id=video.id,
@@ -37,23 +32,21 @@ class TranscodingOrchestrator:
         )
         job = self.job_service.create(db, obj_in=job_payload)
 
-        # Use the video's S3 key directly - no download needed
         chunks = self.chunking_service.create_and_store_chunks(
             db,
             job_id=job.id,
-            source_object_key=video.presigned_url,  # Pass the MinIO object key
+            source_object_key=video.presigned_url, 
             target_seconds=60,
             object_prefix=f"chunks/{job.id}",
         )
-        # Notify workers via Kafka
         await self._notify_workers(job_id=job.id, chunks=chunks)
+        await redis_client.set_total_chunks(str(job.id), len(chunks))
         return job.id, len(chunks)
 
 
     async def _notify_workers(self, job_id: UUID, chunks):
-        logger.info("Testing hello",job_id)
-        chunk_keys = [c.chunk_s3_key for c in chunks]
+        chunk_data = [{"id": c.id, "chunk_s3_key": c.chunk_s3_key} for c in chunks]
         async with KafkaProducerWrapper(
             topic="video-chunks"
         ) as producer:
-            await producer.notify_workers(job_id=job_id, chunk_keys=chunk_keys)
+            await producer.notify_workers(job_id=job_id, chunk_data=chunk_data,)

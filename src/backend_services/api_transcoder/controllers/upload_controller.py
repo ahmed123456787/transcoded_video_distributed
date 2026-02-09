@@ -6,6 +6,8 @@ from api_transcoder.database import get_db
 from api_transcoder.services.upload_service import UploadService
 from api_transcoder.services.transcoding_service import TranscodingOrchestrator
 from api_transcoder.services.job_service import job_service
+from api_transcoder.services.chunking_service import chunking_service
+
 
 router = APIRouter()
 
@@ -56,6 +58,5 @@ async def delete_job(job_id: UUID, db=Depends(get_db)):
 
 @router.get("/chunk-jobs")
 async def list_chunk_jobs(db=Depends(get_db)):
-    from api_transcoder.services.chunking_service import chunking_service
     chunk_jobs = chunking_service.get_all(db).all()
     return {"chunk_jobs": chunk_jobs}

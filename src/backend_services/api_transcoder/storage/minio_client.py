@@ -1,100 +1,90 @@
 from minio import Minio
-from datetime import datetime
-from urllib.parse import urlencode, quote
-import hashlib
-import hmac
+from datetime import timedelta
 from api_transcoder.config.base_config import settings
+from logging import getLogger
+from urllib.parse import urlparse
 
+logger = getLogger(__name__)
 
 class MinioClient:
-
     def __init__(self):
-        self.client = Minio(
-            settings.MINIO_ENDPOINT,
+        # 1. Internal Client (for actual uploads/downloads)
+        internal_host = settings.MINIO_ENDPOINT.replace("http://", "").replace("https://", "")
+        self.internal_client = Minio(
+            internal_host,
             access_key=settings.MINIO_ACCESS_KEY,
             secret_key=settings.MINIO_SECRET_KEY,
-            secure=False
+            secure=settings.MINIO_ENDPOINT.startswith("https")
         )
+
+        # 2. Signer Client (for generating URLs for the browser)
+        ext_endpoint = settings.MINIO_EXTERNAL_ENDPOINT
+        if not ext_endpoint.startswith(('http://', 'https://')):
+            ext_endpoint = f"http://{ext_endpoint}"
+            
+        parsed_external = urlparse(ext_endpoint)
+        
+        self.signer_client = Minio(
+            parsed_external.netloc, 
+            access_key=settings.MINIO_ACCESS_KEY,
+            secret_key=settings.MINIO_SECRET_KEY,
+            secure=parsed_external.scheme == "https",
+            # ADD THIS LINE:
+            region="us-east-1"  # This prevents the network call to 'localhost'
+        )
+
         self.bucket_name = settings.MINIO_BUCKET
-        self.external_endpoint = settings.MINIO_EXTERNAL_ENDPOINT
-        self.access_key = settings.MINIO_ACCESS_KEY
-        self.secret_key = settings.MINIO_SECRET_KEY
+
+    # --- Internal Operations (Use internal_client) ---
 
     def list_buckets(self):
-        return self.client.list_buckets()
-
+        return self.internal_client.list_buckets()
 
     def check_bucket_exists(self, bucket_name: str) -> bool:
-        return self.client.bucket_exists(bucket_name)
-
+        return self.internal_client.bucket_exists(bucket_name)
 
     def upload_file(self, file_path: str, object_name: str):
         if not self.check_bucket_exists(self.bucket_name):
-            self.client.make_bucket(self.bucket_name)
-        return self.client.fput_object(
+            self.internal_client.make_bucket(self.bucket_name)
+        
+        return self.internal_client.fput_object(
             self.bucket_name,
             object_name,
             file_path,
         )
-
 
     def download_file(self, object_name: str, file_path: str):
-        return self.client.fget_object(
+        return self.internal_client.fget_object(
             self.bucket_name,
             object_name,
             file_path,
         )
 
-
-    def _sign(self, key: bytes, msg: str) -> bytes:
-        return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
-
-
-    def _get_signature_key(self, date_stamp: str, region: str, service: str) -> bytes:
-        k_date = self._sign(("AWS4" + self.secret_key).encode("utf-8"), date_stamp)
-        k_region = self._sign(k_date, region)
-        k_service = self._sign(k_region, service)
-        k_signing = self._sign(k_service, "aws4_request")
-        return k_signing
-
-
-    def _generate_presigned_url(self, method: str, object_name: str, expires: int = 3600) -> str:
-        """
-        Generate a presigned URL using AWS Signature Version 4.
-        """
-        region = "us-east-1"
-        service = "s3"
-        host = self.external_endpoint
-        
-        t = datetime.utcnow()
-        amz_date = t.strftime("%Y%m%dT%H%M%SZ")
-        date_stamp = t.strftime("%Y%m%d")
-        credential_scope = f"{date_stamp}/{region}/{service}/aws4_request"
-        canonical_uri = f"/{self.bucket_name}/{quote(object_name, safe='/')}"
-        query_params = {
-            "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
-            "X-Amz-Credential": f"{self.access_key}/{credential_scope}",
-            "X-Amz-Date": amz_date,
-            "X-Amz-Expires": str(expires),
-            "X-Amz-SignedHeaders": "host",
-        }
-        canonical_querystring = urlencode(sorted(query_params.items()))
-        canonical_headers = f"host:{host}\n"
-        signed_headers = "host"
-        payload_hash = "UNSIGNED-PAYLOAD"
-        canonical_request = f"{method}\n{canonical_uri}\n{canonical_querystring}\n{canonical_headers}\n{signed_headers}\n{payload_hash}"
-        string_to_sign = f"AWS4-HMAC-SHA256\n{amz_date}\n{credential_scope}\n{hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()}"
-        signing_key = self._get_signature_key(date_stamp, region, service)
-        signature = hmac.new(signing_key, string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
-        url = f"http://{host}{canonical_uri}?{canonical_querystring}&X-Amz-Signature={signature}"
-        
-        return url
-
-
+    # --- External URL Generation (Use signer_client) ---
 
     def generate_presigned_put_url(self, object_name: str, expires: int = 3600) -> str:
-        return self._generate_presigned_url("PUT", object_name, expires)
-
+        """
+        Generates a PUT URL signed with the external hostname so the hash matches.
+        """
+        print(object_name)
+        url = self.signer_client.get_presigned_url(
+            "PUT",
+            self.bucket_name,
+            object_name,
+            expires=timedelta(seconds=expires),
+        )
+        logger.info(f"Generated External PUT URL: {url}")
+        return url
 
     def generate_presigned_get_url(self, object_name: str, expires: int = 3600) -> str:
-        return self._generate_presigned_url("GET", object_name, expires)
+        """
+        Generates a GET URL signed with the external hostname so the hash matches.
+        """
+        url = self.signer_client.get_presigned_url(
+            "GET",
+            self.bucket_name,
+            object_name,
+            expires=timedelta(seconds=expires),
+        )
+        logger.info(f"Generated External GET URL: {url}")
+        return url
