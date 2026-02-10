@@ -2,16 +2,14 @@ import json
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional
 import subprocess
-import os
-import sys
 
 from common.redis_client import redis_client
 from common.message_types import ChunkTranscodingMessage
 from worker.consumer import ChunkTranscodingConsumer
 from api_transcoder.storage.minio_client import MinioClient
 from api_transcoder.config.base_config import settings
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

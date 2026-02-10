@@ -59,5 +59,5 @@ class TranscodingOrchestrator:
             await producer.notify_workers(
                 job_id=job_id, 
                 chunk_data=chunk_data,
-                total_chunks=total_chunks
+                # total_chunks=total_chunks
             )
