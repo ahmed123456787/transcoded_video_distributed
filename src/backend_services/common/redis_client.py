@@ -20,6 +20,10 @@ class RedisClient:
         completed_chunks = int(job_data[b'completed_chunks'])
         return completed_chunks >= total_chunks
     
+    async def mark_job_complete(self, job_id: str):
+        """Mark a job as complete in Redis."""
+        self.client.hset(f"job:{job_id}", "status", "completed")
+        self.client.expire(f"job:{job_id}", 86400)  # Expire after 24 hours
 
 
 redis_client = RedisClient()

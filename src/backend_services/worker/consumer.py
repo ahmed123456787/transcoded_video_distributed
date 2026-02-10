@@ -1,73 +1,59 @@
 import aiokafka
-from abc import ABC, abstractmethod
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-class EventConsumer(ABC):
-
+class ChunkTranscodingConsumer():
+    """Consumer for chunk transcoding messages from the video-chunks topic."""
+    
     def __init__(self, bootstrap_servers: str, topic: str, group_id: str):
         self.bootstrap_servers = bootstrap_servers
         self.topic = topic
         self.group_id = group_id
+        self.consumer = None
+        self.running = False
+    
+    async def start(self):
+        """Start the consumer."""
+        # Create the consumer within async context
         self.consumer = aiokafka.AIOKafkaConsumer(
             self.topic,
             bootstrap_servers=self.bootstrap_servers,
             group_id=self.group_id,
             auto_offset_reset="earliest",
-            enable_auto_commit=False # to ensure messages are processed then ACK kafka
+            enable_auto_commit=False,
+            max_poll_interval_ms=600000,      # 10 minutes - allow long transcoding
+            session_timeout_ms=120000,         # 2 minutes
+            heartbeat_interval_ms=30000,       # 30 seconds
+            max_poll_records=1,                # Process one message at a time
+            connections_max_idle_ms=540000,    # 9 minutes
         )
-        self.running = False
-
-
-    async def start(self):
         self.running = True
         await self.consumer.start()
+        logger.info(f"ChunkTranscodingConsumer started for topic: {self.topic}")
+    
 
-
-    async def stop(self):
-        self.running = False
-        await self.consumer.stop()
-
-
-    async def consume(self):
+    async def consume(self, process_callback):
         try:
             async for msg in self.consumer:
-                # process message for each consumed message case (uploaded,chuneked ...)
-                await self._process_message(msg)
-                await self.consumer.commit()
-                if not self.running:
-                    break
+                logger.info(f"Received message on partition {msg.partition}, offset {msg.offset}")
+                try:
+                    await process_callback(msg)
+                    await self.consumer.commit()
+                except Exception as e:
+                    logger.error(f"Error processing message: {e}", exc_info=True)
         except Exception as e:
-            pass
-            # do not commit offset if error occurs during processing
-        finally:
-            await self.stop()
-
-    @abstractmethod
-    async def _process_message(self, msg): ...
-
-
-
-class VideoUploadedConsumer(EventConsumer):
-    async def _process_message(self, msg):
-        # Implement your message processing logic here
-        print(f"Processing message: {msg.value.decode('utf-8')}")
-
-
-class VideoChunkedConsumer(EventConsumer):
-    async def _process_message(self, msg):
-        # Implement your message processing logic here
-        print(f"Processing chunked video message: {msg.value.decode('utf-8')}")
+            logger.error(f"Error in consume loop: {e}", exc_info=True)
+       
+    
+    async def stop(self):
+        """Stop the consumer."""
+        if self.consumer:
+            self.running = False
+            await self.consumer.stop()
+            logger.info("ChunkTranscodingConsumer stopped")
 
 
 
-class VideoTranscodedConsumer(EventConsumer): 
-    async def _process_message(self, msg):
-        # Implement your message processing logic here
-        print(f"Processing transcoded video message: {msg.value.decode('utf-8')}")
-
-
-
-class VideoFailedConsumer(EventConsumer):
-    async def _process_message(self, msg):
-        # Implement your message processing logic here
-        print(f"Processing failed video message: {msg.value.decode('utf-8')}")

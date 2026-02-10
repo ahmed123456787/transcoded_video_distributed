@@ -80,10 +80,36 @@ services:
     networks:
       - app-net
 
+  worker:
+    build:
+      context: .
+      dockerfile: src/backend_services/Dockerfile
+    env_file:
+      - src/backend_services/.env
+    environment:
+      - KAFKA_BROKER=kafka:9093
+    command: python -m worker.wrok
+    depends_on:
+      - kafka
+      - minio
+      - redis
+    networks:
+      - app-net
+    volumes:
+      - ./src/backend_services:/app/src
+      - worker_temp:/tmp/transcoding_worker
+      - worker_merge:/tmp/video_merge
+    working_dir: /app/src
+    restart: unless-stopped
+    deploy:
+      replicas: 2 # Run 2 worker instances for parallel processing
+
 volumes:
   kafka_data:
   minio_data:
   redis_data:
+  worker_temp:
+  worker_merge:
 
 networks:
   app-net:

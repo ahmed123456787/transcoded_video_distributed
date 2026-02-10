@@ -39,14 +39,25 @@ class TranscodingOrchestrator:
             target_seconds=60,
             object_prefix=f"chunks/{job.id}",
         )
-        await self._notify_workers(job_id=job.id, chunks=chunks)
-        await redis_client.set_total_chunks(str(job.id), len(chunks))
-        return job.id, len(chunks)
+        
+        # IMPORTANT: Initialize Redis BEFORE sending Kafka messages
+        # This ensures workers have the total_chunks value ready
+        total_chunks = len(chunks)
+        await redis_client.set_total_chunks(str(job.id), total_chunks)
+        
+        # Now notify workers with both the chunks AND total count
+        await self._notify_workers(job_id=job.id, chunks=chunks, total_chunks=total_chunks)
+        
+        return job.id, total_chunks
 
 
-    async def _notify_workers(self, job_id: UUID, chunks):
+    async def _notify_workers(self, job_id: UUID, chunks, total_chunks: int):
         chunk_data = [{"id": c.id, "chunk_s3_key": c.chunk_s3_key} for c in chunks]
         async with KafkaProducerWrapper(
             topic="video-chunks"
         ) as producer:
-            await producer.notify_workers(job_id=job_id, chunk_data=chunk_data,)
+            await producer.notify_workers(
+                job_id=job_id, 
+                chunk_data=chunk_data,
+                total_chunks=total_chunks
+            )

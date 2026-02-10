@@ -1,7 +1,10 @@
 import os
-import sys 
+from pathlib import Path
 import subprocess
 import shlex
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_video_size(path: str) -> int:
@@ -9,19 +12,24 @@ def get_video_size(path: str) -> int:
     try:
         return os.path.getsize(path)
     except OSError as e:
-        print(f"Error getting size for file {path}: {e}", file=sys.stderr)
+        logger.error(f"Error getting size for file {path}: {e}")
         return -1
     
 
-def get_video_length(filename: str):
-    """Stub function to return video length"""
-    output = subprocess.check_output(("ffprobe", "-v", "error", "-show_entries",
-                             "format=duration", "-of",
-                             "default=noprint_wrappers=1:nokey=1", filename))
-    return int(float(output))
+def get_video_length(filename: str) -> int:
+    """Get duration of video file in seconds"""
+    try:
+        output = subprocess.check_output((
+            "ffprobe", "-v", "error", "-show_entries",
+            "format=duration", "-of",
+            "default=noprint_wrappers=1:nokey=1", filename
+        ))
+        return int(float(output))
+    except Exception as e:
+        logger.error(f"Error getting video length: {e}")
+        raise
 
 
- 
 def split_video_by_seconds(filename, split_length, output_dir, vcodec="copy", acodec="copy",
                            extra="", video_length=None):
     """Split video into chunks of specified length in seconds."""
@@ -31,7 +39,6 @@ def split_video_by_seconds(filename, split_length, output_dir, vcodec="copy", ac
     
     if video_length is None:
         video_length = get_video_length(filename)
-
 
     split_count = int(video_length / split_length) + (1 if video_length % split_length > 0 else 0)
 
@@ -48,13 +55,30 @@ def split_video_by_seconds(filename, split_length, output_dir, vcodec="copy", ac
 
 
 
-def convert_to_720p(input_file: str, output_file: str):
-    """Convert video to 720p resolution."""
-    cmd = [
-        "ffmpeg",
-        "-i", input_file,
-        "-vf", "scale=-1:720",
-        "-c:a", "copy",
-        output_file
-    ]
-    subprocess.run(cmd, check=True)
+
+
+def transcode_to_resolution(input_path: Path,output_path: Path,resolution: str = "1080p",bitrate: int = 5000
+    ) -> bool:
+        """Transcode chunk to target resolution."""
+        try:
+            # Parse resolution (e.g., "1080p" -> 1080)
+            height = int(resolution.rstrip('p'))
+            
+            cmd = [
+                "ffmpeg",
+                "-y",  # Overwrite output
+                "-i", str(input_path),
+                "-vf", f"scale=-1:{height}",  # Scale to target height, maintain aspect ratio
+                "-c:v", "libx264",
+                "-preset", "fast",  # fast for worker speed
+                "-b:v", f"{bitrate}k",
+                "-c:a", "aac",
+                "-b:a", "128k",
+                str(output_path),
+            ]
+            
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            return result
+        
+        except Exception as e:
+            raise
