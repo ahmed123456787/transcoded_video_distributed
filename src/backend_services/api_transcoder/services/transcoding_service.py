@@ -5,8 +5,8 @@ from api_transcoder.models import Resolution, JobStatus
 from api_transcoder.schema import  JobCreateSchema
 from api_transcoder.services.video_service import video_service
 from api_transcoder.services.job_service import JobService
-from api_transcoder.services.chunking_service import ChunkingService
-from api_transcoder.events.producer import KafkaProducerWrapper
+from api_transcoder.services.chunking_service import chunking_service
+from api_transcoder.events.producer import KafkaProducer
 from common.redis_client import redis_client
 
 
@@ -14,7 +14,7 @@ from common.redis_client import redis_client
 class TranscodingOrchestrator:
     def __init__(self):
         self.job_service = JobService()
-        self.chunking_service = ChunkingService()
+        self.chunking_service = chunking_service
 
 
     async def start_transcoding(self, db: Session, video_id: UUID):
@@ -40,10 +40,12 @@ class TranscodingOrchestrator:
             object_prefix=f"chunks/{job.id}",
         )
         
-        # IMPORTANT: Initialize Redis BEFORE sending Kafka messages
+
+        # Set total chunks to know how to merge in the future.
         total_chunks = len(chunks)
         await redis_client.set_total_chunks(str(job.id), total_chunks)
         
+
         # Now notify workers with both the chunks AND total count
         await self._notify_workers(job_id=job.id, chunks=chunks, total_chunks=total_chunks)
         
@@ -51,12 +53,11 @@ class TranscodingOrchestrator:
 
 
     async def _notify_workers(self, job_id: UUID, chunks, total_chunks: int):
+
         chunk_data = [{"id": c.id, "chunk_s3_key": c.chunk_s3_key} for c in chunks]
-        async with KafkaProducerWrapper(
-            topic="video-chunks"
-        ) as producer:
+        
+        async with KafkaProducer(topic="video-chunks") as producer:
             await producer.notify_workers(
                 job_id=job_id, 
                 chunk_data=chunk_data,
-                # total_chunks=total_chunks
             )

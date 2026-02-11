@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Generic, TypeVar
 from uuid import UUID
 from api_transcoder.models import Resolution
 from api_transcoder.models import JobStatus
@@ -71,3 +71,50 @@ class JobChunkCreateSchema(BaseModel):
 
 class JobChunkUpdateSchema(BaseModel):
     chunk_s3_key: Optional[str] = None
+
+
+
+
+
+
+
+T = TypeVar('T')
+
+
+class ApiResponse(BaseModel, Generic[T]):
+    """Standard API response wrapper"""
+    success: bool
+    message: str
+    data: Optional[T] = None
+    error: Optional[str] = None
+
+
+class VideoUploadRequest(BaseModel):
+    filename: str
+
+
+class VideoUploadedResponse(BaseModel):
+    video_id: UUID
+    upload_url: str
+
+
+class JobSchema(BaseModel):
+    id: UUID
+    status: str
+    # ...other fields
+
+
+# Specific response types
+class UploadResponse(BaseModel):
+    video_id: UUID
+    upload_url: str
+
+
+class TranscodeResponse(BaseModel):
+    video_id: UUID
+    job_id: UUID
+    chunks: int
+
+
+class JobDeleteResponse(BaseModel):
+    job_id: UUID

@@ -10,7 +10,7 @@ from api_transcoder.storage.minio_client import MinioClient
 from api_transcoder.services.base_service import BaseService
 from api_transcoder.models import JobChunk
 from api_transcoder.schema import JobChunkCreateSchema, JobChunkUpdateSchema
-
+from api_transcoder.exceptions.exceptions import OsException
 
 
 
@@ -60,11 +60,9 @@ class ChunkingService(BaseService[JobChunk, JobChunkCreateSchema, JobChunkUpdate
         try:
             os.remove(local_input)
         except OSError:
-            pass
+            raise OsException(f"Failed to remove temporary input file: {local_input}")
         
         return sorted(str(p) for p in Path(work_dir).glob("chunk_*.ts"))
-
-
     
 
     def upload_chunks_to_minio(self, chunk_paths: List[str], object_prefix: str) -> List[str]:
