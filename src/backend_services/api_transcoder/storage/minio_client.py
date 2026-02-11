@@ -8,7 +8,7 @@ logger = getLogger(__name__)
 
 class MinioClient:
     def __init__(self):
-        # 1. Internal Client (for actual uploads/downloads)
+        # 1. Internal Client 
         internal_host = settings.MINIO_ENDPOINT.replace("http://", "").replace("https://", "")
         self.internal_client = Minio(
             internal_host,
@@ -17,7 +17,7 @@ class MinioClient:
             secure=settings.MINIO_ENDPOINT.startswith("https")
         )
 
-        # 2. Signer Client (for generating URLs for the browser)
+        # 2. Signer Client 
         ext_endpoint = settings.MINIO_EXTERNAL_ENDPOINT
         if not ext_endpoint.startswith(('http://', 'https://')):
             ext_endpoint = f"http://{ext_endpoint}"
@@ -29,8 +29,7 @@ class MinioClient:
             access_key=settings.MINIO_ACCESS_KEY,
             secret_key=settings.MINIO_SECRET_KEY,
             secure=parsed_external.scheme == "https",
-            # ADD THIS LINE:
-            region="us-east-1"  # This prevents the network call to 'localhost'
+            region="us-east-1"  
         )
 
         self.bucket_name = settings.MINIO_BUCKET

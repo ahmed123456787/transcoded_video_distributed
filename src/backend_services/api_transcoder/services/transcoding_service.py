@@ -41,7 +41,6 @@ class TranscodingOrchestrator:
         )
         
         # IMPORTANT: Initialize Redis BEFORE sending Kafka messages
-        # This ensures workers have the total_chunks value ready
         total_chunks = len(chunks)
         await redis_client.set_total_chunks(str(job.id), total_chunks)
         

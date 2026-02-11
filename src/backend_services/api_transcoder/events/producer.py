@@ -83,6 +83,7 @@ class KafkaProducerWrapper:
             partition = index % partition_count
 
             message = ChunkTranscodingMessage(
+                job_id=str(job_id),
                 id=str(chunk_id),
                 chunk_index=index,
                 chunk_s3_key=chunk_s3_key,
